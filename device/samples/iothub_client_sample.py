@@ -6,6 +6,7 @@
 
 import random
 import time
+import datetime
 import sys
 import iothub_client
 from iothub_client import IoTHubClient, IoTHubClientError, IoTHubTransportProvider, IoTHubClientResult
@@ -54,7 +55,11 @@ PROTOCOL = IoTHubTransportProvider.MQTT
 # "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"
 CONNECTION_STRING = "HostName=SilckTestHub.azure-devices.net;DeviceId=Gizmoid;SharedAccessKey=DHaoY8F8yGs7Sk4/J63JdheR8Zcct+C0KwKmfrGLyAc=" #"[Device Connection String]"
 
-MSG_TXT = "{\"deviceId\": \"myPythonDevice\",\"windSpeed\": %.2f,\"temperature\": %.2f,\"humidity\": %.2f}"
+#MSG_TXT = "{\"deviceId\": \"myPythonDevice\",\"windSpeed\": %.2f,\"temperature\": %.2f,\"humidity\": %.2f}"
+#MSG_TXT = "{\"MessageType\": \"\",\"ProtocolVersion\": \"\",\"From\": \"\",\"To\": \"\",\"Manufacturer\": \"\",\"DeviceType\": \"\",\"SerialNumber\": \"Gizmo-2018-001\",\"PatientAccessCode\": \"\",\"DateTime\": \"2018-07-13 16:02:00\",\"KVPsSerialized\": \"\",\"CasenotesEntrySerialized\": \"\",\"SilckObservationsSerialized\": \"\",\"ManufacturerContentSerialized\": \"\"}"
+MSG_TXT = """{"MessageType": "%s", "ProtocolVersion": "%d", "From": "", "To": "", "Manufacturer": "", "DeviceType": "", "SerialNumber": "Gizmo-2018-001", "PatientAccessCode": "", "DateTime": "%s", 
+"KVPsSerialized": "", "CasenotesEntrySerialized": "", "SilckObservationsSerialized": "", "ManufacturerContentSerialized": ""
+}"""
 
 # some embedded platforms need certificate information
 
@@ -137,6 +142,9 @@ def device_method_callback(method_name, payload, user_context):
 def iothub_client_init():
     # prepare iothub client
     client = IoTHubClient(CONNECTION_STRING, PROTOCOL)
+
+    client.set_option("auto_url_encode_decode", True)
+
     if client.protocol == IoTHubTransportProvider.HTTP:
         client.set_option("timeout", TIMEOUT)
         client.set_option("MinimumPollingTime", MINIMUM_POLLING_TIME)
@@ -197,13 +205,20 @@ def iothub_client_sample_run():
             # send a few messages every minute
             print ( "IoTHubClient sending %d messages" % MESSAGE_COUNT )
 
+#            for message_counter in range(0, MESSAGE_COUNT):
+#                temperature = MIN_TEMPERATURE + (random.random() * 10)
+#                humidity = MIN_HUMIDITY + (random.random() * 20)
+#                msg_txt_formatted = MSG_TXT % (
+#                    AVG_WIND_SPEED + (random.random() * 4 + 2),
+#                    temperature,
+#                    humidity)
+
+            now = datetime.datetime.now()
+            print("Timestamp %s" % now)
             for message_counter in range(0, MESSAGE_COUNT):
-                temperature = MIN_TEMPERATURE + (random.random() * 10)
-                humidity = MIN_HUMIDITY + (random.random() * 20)
-                msg_txt_formatted = MSG_TXT % (
-                    AVG_WIND_SPEED + (random.random() * 4 + 2),
-                    temperature,
-                    humidity)
+                msg_txt_formatted = MSG_TXT % ("test-device-message", 1, now)
+
+
                 # messages can be encoded as string or bytearray
                 if (message_counter & 1) == 1:
                     message = IoTHubMessage(bytearray(msg_txt_formatted, 'utf8'))
@@ -213,8 +228,8 @@ def iothub_client_sample_run():
                 message.message_id = "message_%d" % message_counter
                 message.correlation_id = "correlation_%d" % message_counter
                 # optional: assign properties
-                prop_map = message.properties()
-                prop_map.add("temperatureAlert", 'true' if temperature > 28 else 'false')
+                #prop_map = message.properties()
+                #prop_map.add("temperatureAlert", 'true' if temperature > 28 else 'false')
 
                 client.send_event_async(message, send_confirmation_callback, message_counter)
                 print ( "IoTHubClient.send_event_async accepted message [%d] for transmission to IoT Hub." % message_counter )
